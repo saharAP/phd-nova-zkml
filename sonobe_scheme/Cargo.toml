@@ -6,6 +6,11 @@ edition = "2021"
 [dependencies]
 folding-schemes = { git = "https://github.com/privacy-scaling-explorations/sonobe", package = "folding-schemes"}
 frontends = { git = "https://github.com/privacy-scaling-explorations/sonobe", package = "frontends"}
+solidity-verifiers = { git = "https://github.com/privacy-scaling-explorations/sonobe", package = "solidity-verifiers"}
+ark-groth16 = { version = "^0.4.0", default-features = false, features = ["parallel"]}
+ark-bn254 = {version="0.4.0", features=["r1cs"]}
+ark-grumpkin = {version="0.4.0", features=["r1cs"]}
+rand = "0.8.5"
 
 [patch.crates-io]
 # The following patch is to use a version of ark-r1cs-std compatible with
