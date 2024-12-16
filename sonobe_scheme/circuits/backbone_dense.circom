@@ -56,7 +56,7 @@ template BackboneDense(nInputs, nOutputs,n) {
   
 
     for (var i = 0; i < nInputs; i++) {
-        dense_1.in[i] <== in[i];
+        dense_1.in[i] <== a_prev[i];
         for (var j=0; j<nOutputs; j++) {
             dense_1.weights[i][j] <== dense_1_weights[i][j];
         }
@@ -73,12 +73,6 @@ template BackboneDense(nInputs, nOutputs,n) {
     for (var i=0; i<nOutputs; i++) {
         relu[i] = ReLU();
         relu[i].in <== dense_1.out[i];
-        relu[i].out <== relu_out[i];
-    }
-    for (var i=0; i<nOutputs; i++) {
-        relu[i] = ReLU();
-        relu[i].in <== dense_1.out[i];
-        relu[i].out <== relu_out[i];
     }
     for (var i=0; i<nOutputs; i++) {
         relu[i].out <== relu_out[i];
