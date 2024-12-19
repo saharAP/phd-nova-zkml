@@ -23,27 +23,27 @@ template BackboneDense(nInputs, nOutputs,n) {
     // convert external inputs to the circit inputs
 
     // decoding external inputs to the circuit inputs
-    signal dense_1_weights[nInputs][nOutputs];
-    signal dense_1_bias[nOutputs];
-    signal dense_1_out[nOutputs];
-    signal dense_1_remainder[nOutputs];
+    signal dense_weights[nInputs][nOutputs];
+    signal dense_bias[nOutputs];
+    signal dense_out[nOutputs];
+    signal dense_remainder[nOutputs];
     signal relu_out[nOutputs];
     for (var i = 0; i < nInputs; i++) {
         for (var j=0; j<nOutputs; j++) {
-            dense_1_weights[i][j] <-- external_inputs[i*nOutputs+j];
+            dense_weights[i][j] <-- external_inputs[i*nOutputs+j];
         }
     }
     
     for (var i=0; i<nOutputs; i++) {
-        dense_1_bias[i] <-- external_inputs[nInputs*nOutputs+i];
+        dense_bias[i] <-- external_inputs[nInputs*nOutputs+i];
     }
     
     for (var i=0; i<nOutputs; i++) {
-        dense_1_out[i] <-- external_inputs[nInputs*nOutputs+nOutputs+i];
+        dense_out[i] <-- external_inputs[nInputs*nOutputs+nOutputs+i];
     }
     
     for (var i=0; i<nOutputs; i++) {
-        dense_1_remainder[i] <-- external_inputs[nInputs*nOutputs+nOutputs+nOutputs+i];
+        dense_remainder[i] <-- external_inputs[nInputs*nOutputs+nOutputs+nOutputs+i];
     }
     
     for (var i=0; i<nOutputs; i++) {
@@ -51,31 +51,20 @@ template BackboneDense(nInputs, nOutputs,n) {
     }
     
 // Circuit logic starts here
-    component dense_1 = Dense(nInputs,nOutputs,10**n);
+    component dense = Dense(nInputs,nOutputs,10**n);
     component relu[nOutputs];
   
+    dense.in <== a_prev;
+    dense.weights <== dense_weights;
+    dense.bias <== dense_bias;
+    dense.out <== dense_out;
+    dense.remainder <== dense_remainder;
 
-    for (var i = 0; i < nInputs; i++) {
-        dense_1.in[i] <== a_prev[i];
-        for (var j=0; j<nOutputs; j++) {
-            dense_1.weights[i][j] <== dense_1_weights[i][j];
-        }
-    }
-       for (var i=0; i<nOutputs; i++) {
-        dense_1.bias[i] <== dense_1_bias[i];
-    }
-
-    for (var i=0; i<nOutputs; i++) {
-        dense_1.out[i] <== dense_1_out[i];
-        dense_1.remainder[i] <== dense_1_remainder[i];
-    }
-    // apply ReLU to the output of the first dense layer
+    // apply ReLU to the output of the dense layer
     for (var i=0; i<nOutputs; i++) {
         relu[i] = ReLU();
-        relu[i].in <== dense_1.out[i];
-    }
-    for (var i=0; i<nOutputs; i++) {
+        relu[i].in <== dense.out[i];
         relu[i].out <== relu_out[i];
-        out[i] <== relu[i].out;
     }
+    out<== relu_out;
 }
