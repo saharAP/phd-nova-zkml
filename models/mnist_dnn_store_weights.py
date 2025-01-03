@@ -9,23 +9,28 @@ import json
 model = tf.keras.models.load_model('./data/mnist_DNN_model.keras')
 
 # Accessing the weights from layer 2 and layer 3
-layer_0_weights = model.layers[0].get_weights() 
-layer_2_weights = model.layers[1].get_weights()  # Assuming layer 2 is at index 0 (first hidden layer)
-layer_3_weights = model.layers[2].get_weights()  # Assuming layer 3 is at index 1 (classification layer)
+layer_in_weights = model.layers[0].get_weights() 
+layer_h1_weights = model.layers[1].get_weights()  # Assuming layer 2 is at index 0 (first hidden layer)
+layer_h2_weights = model.layers[2].get_weights()  # Assuming layer 3 is at index 2 (classification layer)
+layer_out_weights = model.layers[3].get_weights()  # Assuming layer 3 is at index 3 (classification layer)
 
 # Prepare the weights in a serializable format (convert to lists)
 weights_to_save = {
-        "layer_input": {
-        "weights": layer_0_weights[0].tolist(),  # Weight matrix of layer input
-        "biases": layer_0_weights[1].tolist()    # Bias vector of layer input
+        "layer_in": {
+        "weights": layer_in_weights[0].tolist(),  # Weight matrix of layer input
+        "biases": layer_in_weights[1].tolist()    # Bias vector of layer input
     },
-    "layer_1": {
-        "weights": layer_2_weights[0].tolist(),  # Weight matrix of layer 1
-        "biases": layer_2_weights[1].tolist()    # Bias vector of layer 1
+    "layer_h1": {
+        "weights": layer_h1_weights[0].tolist(),  # Weight matrix of layer 1
+        "biases": layer_h1_weights[1].tolist()    # Bias vector of layer 1
+    },
+    "layer_h2": {
+        "weights": layer_h2_weights[0].tolist(),  # Weight matrix of layer 1
+        "biases": layer_h2_weights[1].tolist()    # Bias vector of layer 1
     },
     "layer_out": {
-        "weights": layer_3_weights[0].tolist(),  # Weight matrix of layer output
-        "biases": layer_3_weights[1].tolist()    # Bias vector of layer output
+        "weights": layer_out_weights[0].tolist(),  # Weight matrix of layer output
+        "biases": layer_out_weights[1].tolist()    # Bias vector of layer output
     }
 }
 
