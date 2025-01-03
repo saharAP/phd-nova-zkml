@@ -19,12 +19,16 @@ x_test = x_test.reshape(-1, 28*28).astype('float32') / 255.0
 # Neural Network model with one hidden layers
 model = models.Sequential([
     layers.InputLayer(shape=(28*28,)),  # Input layer
-    layers.Dense(10, activation=None), # First hidden layer that accepts the input image
-    layers.ReLU(),    # Activation function for the first hidden layer
-    layers.Dense(10, activation=None),     # Second hidden layer
+    layers.Dense(10, activation='relu'), # Input layer
+    layers.Dense(10, activation='relu'),     # First hidden layer
+    layers.Dense(10, activation='relu'),     # Second hidden layer
+    layers.Dense(10, activation=None),     # Output layer (10 classes for digits 0-9)
     layers.Softmax(),    # Output layer (10 classes for digits 0-9)
     # layers.Dense(10, activation='softmax')    # Output layer (10 classes for digits 0-9)
 ])
+# print shape of the input layer
+print("input shape:",model.input_shape)
+
 model.summary()
 # Compile the model
 model.compile(optimizer='adam',
