@@ -17,14 +17,3 @@ def DenseInt(nInputs, nOutputs, n, input, weights, bias):
         out[j] = str(out[j] // n % p)
     return Input, Weights, Bias, out, remainder
 
-def relu(x):
-    if isinstance(x, list):
-        return [str(i) if int(i)<p//2 else str(0) for i in x]
-    else:
-        return max(0, x)
-    
-def relu_int(x):
-    if isinstance(x, list):
-        return [int(i) if int(i)<p//2 else 0 for i in x]
-    else:
-        return max(0, x)
