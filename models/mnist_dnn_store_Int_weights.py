@@ -20,24 +20,24 @@ layer_out_weights = model.layers[3].get_weights()  # Assuming layer 3 is at inde
 # Prepare the weights in a serializable format (convert to lists)
 weights_to_save = {
         "layer_in": {
-        "weights": [[int(layer_in_weights[0][i][j]*scale_factor_w) for i in range(784)] for j in range(10)],  # Weight matrix of layer input
+        "weights": [[int(layer_in_weights[0][i][j]*scale_factor_w) for j in range(10)] for i in range(784)],  # Weight matrix of layer input
         "biases": [int(layer_in_weights[1][i]*scale_factor_b) for i in range(10)]    # Bias vector of layer input
     },
     "layer_h1": {
-        "weights": [[int(layer_h1_weights[0][i][j]*scale_factor_w) for i in range(10)] for j in range(10)],  # Weight matrix of layer 1
+        "weights": [[int(layer_h1_weights[0][i][j]*scale_factor_w) for j in range(10)] for i in range(10)],  # Weight matrix of layer 1
         "biases": [int(layer_h1_weights[1][i]*scale_factor_b) for i in range(10)]    # Bias vector of layer 1
     },
     "layer_h2": {
-        "weights": [[int(layer_h2_weights[0][i][j]*scale_factor_w) for i in range(10)] for j in range(10)],  # Weight matrix of layer 1
+        "weights": [[int(layer_h2_weights[0][i][j]*scale_factor_w) for j in range(10)] for i in range(10)],  # Weight matrix of layer 1
         "biases": [int(layer_h2_weights[1][i]*scale_factor_b) for i in range(10)]   # Bias vector of layer 1
     },
     "layer_out": {
-        "weights": [[int(layer_out_weights[0][i][j]*scale_factor_w) for i in range(10)] for j in range(10)],  # Weight matrix of layer output
+        "weights": [[int(layer_out_weights[0][i][j]*scale_factor_w) for j in range(10)] for i in range(10)],  # Weight matrix of layer output
         "biases": [int(layer_out_weights[1][i]*scale_factor_b) for i in range(10)]   # Bias vector of layer output
     }
 }
-print("out bias:",layer_out_weights[1])
-print("out weights:",[int(layer_out_weights[1][i]*1e36) for i in range(10)])
+print("out weight:",layer_out_weights[0][9])
+print("out weights:",[[int(layer_out_weights[0][i][j]*scale_factor_w) for j in range(10)] for i in range(10)])
 print("Len",len(layer_in_weights[0][0]))
 # [int(model.layers[1].weights[1][i]*1e36) for i in range(4)]
 # Convert the weights to JSON format
