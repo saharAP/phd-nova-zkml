@@ -1,18 +1,14 @@
 pragma circom 2.0.0;
 include "./node_modules/circomlib-ml/circuits/ReLU.circom";
-include "./node_modules/circomlib-ml/circuits/circomlib/mimc.circom";
 include "./node_modules/circomlib-ml/circuits/Dense.circom";
-include "./node_modules/circomlib-ml/circuits/ArgMax.circom";
-include "./utils/mimcsponge.circom";
-include "./utils/utils.circom";
 
 template BackboneDense(nInputs, nOutputs,n) {
     // activation outputed by the previous layer
-    signal input a_prev[nInputs]; // IVC input
+    signal input ivc_input[nInputs]; // IVC input
 
     signal input external_inputs[nInputs * nOutputs+ nOutputs+ nOutputs+ nOutputs+ nOutputs];
 
-    signal output out[nOutputs]; // IVC output
+    signal output ivc_output[nOutputs]; // IVC output
 // external inputs
     
     // signal input dense_1_weights[nInputs][nOutputs];
@@ -54,7 +50,7 @@ template BackboneDense(nInputs, nOutputs,n) {
     component dense = Dense(nInputs,nOutputs,10**n);
     component relu[nOutputs];
   
-    dense.in <== a_prev;
+    dense.in <== ivc_input;
     dense.weights <== dense_weights;
     dense.bias <== dense_bias;
     dense.out <== dense_out;
@@ -66,5 +62,5 @@ template BackboneDense(nInputs, nOutputs,n) {
         relu[i].in <== dense.out[i];
         relu[i].out <== relu_out[i];
     }
-    out<== relu_out;
+    ivc_output<== relu_out;
 }

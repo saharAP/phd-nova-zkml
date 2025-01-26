@@ -73,15 +73,15 @@ dense_bias_in = [int(model.layers[0].weights[1][i]*1e36) for i in range(10)]
 X_in, dense_weights_in, dense_bias_in, dense_in_out, dense_remainder_in = DenseInt(784, 10, 10**18, X_in, dense_weights_in, dense_bias_in)
 
 relu_in_in = [int(dense_in_out[i]) for i in range(10)]
-relu_out_in = [str(relu_in_in[i]) if relu_in_in[i] < p//2 else 0 for i in range(10)]
+relu_out_in = [str(relu_in_in[i]) if relu_in_in[i] < p//2 else '0' for i in range(10)]
 dense_input_h1=[int(x) for x in relu_out_in]
-
+print("dense_input_h1:", dense_input_h1)
 dense_weights_h1 = [[int(model.layers[1].weights[0][i][j]*1e18) for j in range(10)] for i in range(10)]
 dense_bias_h1 = [int(model.layers[1].weights[1][i]*1e36) for i in range(10)]
 _, dense_weights_h1, dense_bias_h1, dense_h1_out, dense_remainder_h1 = DenseInt(10, 10, 10**18, dense_input_h1, dense_weights_h1, dense_bias_h1)
 
 relu_in_h1 = [int(dense_h1_out[i]) for i in range(10)]
-relu_out_h1 = [str(relu_in_h1[i]) if relu_in_h1[i] < p//2 else 0 for i in range(10)]
+relu_out_h1 = [str(relu_in_h1[i]) if relu_in_h1[i] < p//2 else '0' for i in range(10)]
 dense_input_h2=[int(x) for x in relu_out_h1]
 
 dense_weights_h2 = [[int(model.layers[2].weights[0][i][j]*1e18) for j in range(10)] for i in range(10)]
@@ -89,7 +89,7 @@ dense_bias_h2 = [int(model.layers[2].weights[1][i]*1e36) for i in range(10)]
 _, dense_weights_h2, dense_bias_h2, dense_h2_out, dense_remainder_h2 = DenseInt(10, 10, 10**18, dense_input_h2, dense_weights_h2, dense_bias_h2)
 
 relu_in_h2 = [int(dense_h2_out[i]) for i in range(10)]
-relu_out_h2 = [str(relu_in_h2[i]) if relu_in_h2[i] < p//2 else 0 for i in range(10)]
+relu_out_h2 = [str(relu_in_h2[i]) if relu_in_h2[i] < p//2 else '0' for i in range(10)]
 dense_input_out=[int(x) for x in relu_out_h2]
 
 dense_weights_out = [[int(model.layers[3].weights[0][i][j]*1e18) for j in range(10)] for i in range(10)]
@@ -130,7 +130,7 @@ backbone.append({
 })
 
 in_json={
-        "in": X_in,
+        "x": X_in,
         "head":{
             "weight": dense_weights_in,
             "bias": dense_bias_in,

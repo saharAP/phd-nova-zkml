@@ -3,3 +3,4 @@
 /sonobe_scheme/circuits/node_modules/
 /sonobe_scheme/circuits/out/
 /sonobe_scheme/src/solidity/
+/sonobe_scheme/Cargo.lock
