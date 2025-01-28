@@ -30,20 +30,20 @@ pub struct Network {
 }
 
 // Custom deserialization for Vec<Fr>
-fn deserialize_vec_fr<'de, D>(deserializer: D) -> Result<Vec<Fr>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let str_vec: Vec<String> = Vec::deserialize(deserializer)?;
-    str_vec
-        .into_iter()
-        .map(|s| {
-            Fr::from_str(&s).map_err(|_| {
-                de::Error::custom(format!("Failed to parse Fr from string: {}", s))
-            })
-        })
-        .collect()
-}
+// fn deserialize_vec_fr<'de, D>(deserializer: D) -> Result<Vec<Fr>, D::Error>
+// where
+//     D: Deserializer<'de>,
+// {
+//     let str_vec: Vec<String> = Vec::deserialize(deserializer)?;
+//     str_vec
+//         .into_iter()
+//         .map(|s| {
+//             Fr::from_str(&s).map_err(|_| {
+//                 de::Error::custom(format!("Failed to parse Fr from string: {}", s))
+//             })
+//         })
+//         .collect()
+// }
 
 // Implement Deserialize for DenseLayer
 impl<'de> Deserialize<'de> for DenseLayer {
