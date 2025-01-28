@@ -23,3 +23,13 @@ run the specific rs file from `sonobe_scheme` folder as follows:
 ```sh
 cargo run --release --example mnist_str
 ```
+
+Get memory usage:
+```sh
+> cargo build --release --example mnist_str 
+> /usr/bin/time -l ./target/release/examples/mnist_str
+```
+## References
+- https://github.com/privacy-scaling-explorations/sonobe
+
+
