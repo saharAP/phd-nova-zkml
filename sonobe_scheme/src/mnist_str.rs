@@ -20,15 +20,12 @@ use std::{
 };
 use std::str::FromStr;
 
-
-use ark_bn254::{constraints::GVar, Bn254, Fr, G1Projective as G1};
-
+use ark_bn254::{Bn254, Fr, G1Projective as G1};
 use ark_groth16::Groth16;
-use ark_grumpkin::{constraints::GVar as GVar2, Projective as G2};
+use ark_grumpkin::Projective as G2;
 
-// use std::path::PathBuf;
-// use std::time::Instant;
 
+use experimental_frontends::{circom::CircomFCircuit, utils::VecF};
 use folding_schemes::{
     commitment::{kzg::KZG, pedersen::Pedersen},
     folding::{
@@ -40,9 +37,8 @@ use folding_schemes::{
     },
     frontend::FCircuit,
     transcript::poseidon::poseidon_canonical_config,
-    Decider, FoldingScheme,
+    Decider, Error, FoldingScheme,
 };
-use frontends::circom::CircomFCircuit;
 use solidity_verifiers::{
     evm::{compile_solidity, Evm},
     utils::get_function_selector_for_nova_cyclefold_verifier,
@@ -68,7 +64,7 @@ fn read_circiut_input(f: &str) -> Network {
        serde_json::from_str(&file_content).unwrap()
 }
 
-fn main() {
+fn main() -> Result<(), Error> {
     // define number of steps to be done in the IVC
     let n_steps = 2;
     // import data from a sample digit image 7 as input
@@ -76,14 +72,11 @@ fn main() {
 
     // read the input data for backbone circiut from the file
     let network = read_circiut_input(MNIST_INPUT);
-     // Print the activation of the head
-     println!("Head activation: {:?}", network.head.activation);
      // set the initial state with the activation function of the head
     let z_0= network.head.activation.clone();
-    println!("Initial state: {:?}", z_0);
-    println!("Initial state len: {:?}", z_0.len());
+  
     let mut external_inputs: Vec<Fr> = Vec::new();
-    println!("Backbone activation: {:?}", network.backbone[0].weight);
+
     let mut backnone_0_weight: Vec<Vec<Fr>> = network.backbone[0].weight.clone();
     let mut backnone_1_weight: Vec<Vec<Fr>> = network.backbone[1].weight.clone();
     
@@ -103,32 +96,27 @@ fn main() {
     flat_vec_1.extend( network.backbone[1].dense_out.clone());
     flat_vec_1.extend( network.backbone[1].remainder.clone()); 
     flat_vec_1.extend( network.backbone[1].activation.clone());
-    println!("{:?}", flat_vec_1); // Output: 5
-    println!("{:?}", flat_vec_1.len()); // Output: 5
-    let fr_string = Fr::to_string(&flat_vec_1[0]);
 
-    println!("Field element as string: {}", fr_string);
     // add the external inputs to the list
     external_inputs.push(flat_vec);
     external_inputs.push(flat_vec_1);
-
+    println!("Number of steps: {:?}", external_inputs.len());
     // initialize the Circom circuit
     let r1cs_path = PathBuf::from("./circuits/out/backbone_layer_dnn.r1cs");
     let wasm_path = PathBuf::from(
         "./circuits/out/backbone_layer_dnn_js/backbone_layer_dnn.wasm",
     );
    // 10= size of the input, external input size :140= 10 * 10 + 4 * 10
-    let f_circuit_params = (r1cs_path.into(), wasm_path.into(), 10, 140);
-    let f_circuit = CircomFCircuit::<Fr>::new(f_circuit_params).unwrap();
+    let f_circuit_params = (r1cs_path.into(), wasm_path.into(), 10); // state len = 10
+    const EXT_INP_LEN: usize = 140; // external inputs len = 140
+    let f_circuit = CircomFCircuit::<Fr, EXT_INP_LEN>::new(f_circuit_params)?;
 
     pub type N =
-        Nova<G1, GVar, G2, GVar2, CircomFCircuit<Fr>, KZG<'static, Bn254>, Pedersen<G2>, false>;
+        Nova<G1, G2, CircomFCircuit<Fr, EXT_INP_LEN>, KZG<'static, Bn254>, Pedersen<G2>, false>;
     pub type D = DeciderEth<
         G1,
-        GVar,
         G2,
-        GVar2,
-        CircomFCircuit<Fr>,
+        CircomFCircuit<Fr, EXT_INP_LEN>,
         KZG<'static, Bn254>,
         Pedersen<G2>,
         Groth16<Bn254>,
@@ -136,39 +124,39 @@ fn main() {
     >;
 
     let poseidon_config = poseidon_canonical_config::<Fr>();
-    let mut rng = rand::rngs::OsRng;
-
+    let mut rng = ark_std::rand::rngs::OsRng;
+    // let mut rng = rand::rngs::OsRng;
     // prepare the Nova prover & verifier params
     let nova_preprocess_params = PreprocessorParam::new(poseidon_config, f_circuit.clone());
-    let nova_params = N::preprocess(&mut rng, &nova_preprocess_params).unwrap();
-
-    // initialize the folding scheme engine, in our case we use Nova
-    let mut nova = N::init(&nova_params, f_circuit.clone(), z_0).unwrap();
+    let nova_params = N::preprocess(&mut rng, &nova_preprocess_params)?;
 
     // prepare the Decider prover & verifier params
     let (decider_pp, decider_vp) =
-        D::preprocess(&mut rng, nova_params.clone(), nova.clone()).unwrap();
+    D::preprocess(&mut rng, (nova_params.clone(), f_circuit.state_len()))?;
+
+    // initialize the folding scheme engine, in our case we use Nova
+    let mut nova = N::init(&nova_params, f_circuit.clone(), z_0)?;
 
     // run n steps of the folding iteration
     for (i, external_inputs_at_step) in external_inputs.iter().enumerate() {
-        let start = Instant::now();
-        nova.prove_step(rng, external_inputs_at_step.clone(), None)
-            .unwrap();
-        println!("Nova::prove_step {}: {:?}", i, start.elapsed());
+            let start = Instant::now();
+            nova.prove_step(rng, VecF(external_inputs_at_step.clone()), None)?;
+            println!("Nova::prove_step {}: {:?}", i, start.elapsed());
     }
 
-   // verify the last IVC proof
+    // verify the last IVC proof
     let ivc_proof = nova.ivc_proof();
     N::verify(
         nova_params.1, // Nova's verifier params
         ivc_proof,
-    )
-    .unwrap();
+    )?;
 
-    let start = Instant::now();
-    let proof = D::prove(rng, decider_pp, nova.clone()).unwrap();
+    let mut start = Instant::now();
+    let proof = D::prove(rng, decider_pp, nova.clone())?;
     println!("generated Decider proof: {:?}", start.elapsed());
 
+    // verify the Decider proof
+    start = Instant::now();
     let verified = D::verify(
         decider_vp.clone(),
         nova.i,
@@ -177,10 +165,10 @@ fn main() {
         &nova.U_i.get_commitments(),
         &nova.u_i.get_commitments(),
         &proof,
-    )
-    .unwrap(); // Error!: SNARKVerificationFail
+    )?;
     assert!(verified);
     println!("Decider proof verification: {}", verified);
+    println!("Decider proof verification time: {:?}", start.elapsed());
 
     // Now, let's generate the Solidity code that verifies this Decider final proof
     let function_selector =
@@ -194,8 +182,7 @@ fn main() {
         &nova.U_i,
         &nova.u_i,
         proof,
-    )
-    .unwrap();
+    )?;
 
     // prepare the setup params for the solidity verifier
     let nova_cyclefold_vk = NovaCycleFoldVerifierKey::from((decider_vp, f_circuit.state_len()));
@@ -216,11 +203,10 @@ fn main() {
     fs::write(
         "./src/solidity/nova-verifier.sol",
         decider_solidity_code.clone(),
-    )
-    .unwrap();
-    fs::write("./src/solidity/solidity-calldata.calldata", calldata.clone()).unwrap();
+    )?;
+    fs::write("./src/solidity/solidity-calldata.calldata", calldata.clone())?;
     let s = solidity_verifiers::utils::get_formatted_calldata(calldata.clone());
     fs::write("./src/solidity/solidity-calldata.inputs", s.join(",\n")).expect("");
 
-    
+    Ok(())    
 }

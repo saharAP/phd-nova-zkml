@@ -9,14 +9,15 @@
 /// - generate the Solidity contract that verifies the proof
 /// - verify the proof in the EVM
 ///
-use ark_bn254::{constraints::GVar, Bn254, Fr, G1Projective as G1};
+use ark_bn254::{Bn254, Fr, G1Projective as G1};
 
 use ark_groth16::Groth16;
-use ark_grumpkin::{constraints::GVar as GVar2, Projective as G2};
+use ark_grumpkin::Projective as G2;
 
 use std::path::PathBuf;
 use std::time::Instant;
 
+use experimental_frontends::{circom::CircomFCircuit, utils::VecF};
 use folding_schemes::{
     commitment::{kzg::KZG, pedersen::Pedersen},
     folding::{
@@ -28,9 +29,8 @@ use folding_schemes::{
     },
     frontend::FCircuit,
     transcript::poseidon::poseidon_canonical_config,
-    Decider, FoldingScheme,
+    Decider, Error, FoldingScheme,
 };
-use frontends::circom::CircomFCircuit;
 use solidity_verifiers::{
     evm::{compile_solidity, Evm},
     utils::get_function_selector_for_nova_cyclefold_verifier,
@@ -38,79 +38,44 @@ use solidity_verifiers::{
     NovaCycleFoldVerifierKey,
 };
 
-use std::str::FromStr;
-use num_bigint::BigUint;
-
-fn main() {
-    let a_prev= ["918105808280699729", "938234633893013949", "5202046157904666236", "3692667311340101483", "533906744739070641", "4254320368835451004", "0", "477538819107586721", "2483233945798949915", "7162517932849454889"];
-    let external_inputs_1= ["21888242871839275222246405745257275088548364400416034343697917468801239089153", "21888242871839275222246405745257275088548364400416034343697238811243452563457", "695330053893914624", "498109794226274304", "21888242871839275222246405745257275088548364400416034343697897984132344971265", "21888242871839275222246405745257275088548364400416034343698038684323204300801", "835384401931010048", "21888242871839275222246405745257275088548364400416034343697625152210381832193", "296159916572278784", "456524065440530432","650561651262619648", "477357886641537024", "21888242871839275222246405745257275088548364400416034343697944219524005888001", "157570238282465280", "21888242871839275222246405745257275088548364400416034343698169778841180962817", "21888242871839275222246405745257275088548364400416034343697887598317307691009", "193356730426458112", "843605793969274880", "21888242871839275222246405745257275088548364400416034343698033704497603149825", "21888242871839275222246405745257275088548364400416034343698048317539712237569", "402980872824815616", "21888242871839275222246405745257275088548364400416034343697974410996613120001", "701028822660677632", "21888242871839275222246405745257275088548364400416034343698088178925027983361", "21888242871839275222246405745257275088548364400416034343697981624926762696705", "21888242871839275222246405745257275088548364400416034343697682546820430954497", "297507264992903168", "62908974395031552", "21888242871839275222246405745257275088548364400416034343697707375167375671297", "274919860184547328","21888242871839275222246405745257275088548364400416034343697852334952180350977", "21888242871839275222246405745257275088548364400416034343697978703919504687105", "602770278849708032", "288541056906035200", "540572761492291584", "21888242871839275222246405745257275088548364400416034343697911472872275050497", "395494641748672512", "688664814406336512", "21888242871839275222246405745257275088548364400416034343698047474368912556033", "21888242871839275222246405745257275088548364400416034343697983153076126613505","566559856253730816", "21888242871839275222246405745257275088548364400416034343697839943559214530561", "21888242871839275222246405745257275088548364400416034343698151550746573668353", "902187086302412800", "21888242871839275222246405745257275088548364400416034343697686348897280065537", "21888242871839275222246405745257275088548364400416034343697806946253192298497", "21888242871839275222246405745257275088548364400416034343698018063498021437441", "272290962242273280", "21888242871839275222246405745257275088548364400416034343697855254327350788097", "21888242871839275222246405745257275088548364400416034343698003195695632220161","21888242871839275222246405745257275088548364400416034343698047391080906752001", "173179661264617472", "21888242871839275222246405745257275088548364400416034343697684189696961282049", "658856092104654848", "1002753573739560960", "740307226295533568", "365683548625043456", "21888242871839275222246405745257275088548364400416034343697826602703598387201", "281184671281184768", "401177330157879296","21888242871839275222246405745257275088548364400416034343698191418320937287681", "801451823830401024", "420352366269693952", "157043245795246080", "21888242871839275222246405745257275088548364400416034343697796624381628121089", "21888242871839275222246405745257275088548364400416034343698000026267465809921", "21888242871839275222246405745257275088548364400416034343698194318433179402241", "21888242871839275222246405745257275088548364400416034343697934295589751619585", "21888242871839275222246405745257275088548364400416034343697932379209703882753", "122869015654694912","21888242871839275222246405745257275088548364400416034343697981316221693329409", "403855122007851008", "70792472766185472", "463445731655548928", "273700295630913536", "268359692776898560", "721780798964891648", "21888242871839275222246405745257275088548364400416034343697794931168081084417", "21888242871839275222246405745257275088548364400416034343698082216522578657281", "21888242871839275222246405745257275088548364400416034343697879340881903878145","362737716456062976", "35956476212150272", "21888242871839275222246405745257275088548364400416034343697871449583872114689", "21888242871839275222246405745257275088548364400416034343698125208612635672577", "715315120837754880", "469684876027625472", "141450727804370944", "21888242871839275222246405745257275088548364400416034343697808966159131738113", "21888242871839275222246405745257275088548364400416034343697713057546547232769", "809394146073640960","21888242871839275222246405745257275088548364400416034343698149661914446168065", "225513683147554816", "730487075631005696", "524253363236241408", "452842213315969024", "21888242871839275222246405745257275088548364400416034343697941694426833223681", "21888242871839275222246405745257275088548364400416034343697686629856860700673", "217054281201614848", "488340770852438016", "271215279093055488","21888242871839275222246405745257275088548254955226548357799234996914393972737", "116402323375086907566742946816458752", "67775454324258627669215594911105024", "21888242871839275222246405745257275088548163058381812859451229823294469308417", "285638224221379788582922254318305280", "127826638172351568009086215928152064", "21888242871839275222246405745257275088548279027703472765275625533125211193345", "228357074812232443712250312050868224", "588270057406362877804114953772204032", "21888242871839275222246405745257275088548204200754517851150532690334053302273","1073982502482526249", "89704319541685669", "8534199523977094916", "7930657637628830672", "9950654552550078683", "21888242871839275222246405745257275088548364400416034343696440341854876151053", "2316376121866489082", "2275318176562103335", "766970294311903429", "6123438020802608680","817132917753643008", "169952487406305280", "53861635020816384", "805681440292339712", "988188016477732864", "92242495396642816", "44757870706163712", "512601919848710144", "663514768774791168", "98503643105329152","1073982502482526249", "89704319541685669", "8534199523977094916", "7930657637628830672", "9950654552550078683", "0", "2316376121866489082", "2275318176562103335", "766970294311903429", "6123438020802608680"];
-  
-    let z_0: Vec<Fr> = a_prev.iter()
-    .map(|a| Fr::from_str(a).unwrap())
-    .collect();
-
-    let external_inputs_fr: Vec<Fr> = external_inputs_1.iter()
-    .map(|a| Fr::from_str(a).unwrap())
-    .collect();
-        // Convert each BigUint to Fr
-        // let z_0: Vec<Fr> = a_prev.iter()
-        // .map(|s| {
-        //     // Parse the BigUint
-        //     let biguint = BigUint::parse_bytes(s.as_bytes(), 10).unwrap();
-            
-        //     // Convert BigUint to Fr
-        //     let fr_value = Fr::from(biguint);  // Assuming Fr implements From<BigUint>
-        //     fr_value
-        // })
-        // .collect();
-        // // Convert each BigUint to Fr
-        // let external_inputs_fr: Vec<Fr> = external_inputs_1.iter()
-        // .map(|s| {
-        //     // Parse the BigUint
-        //     let biguint = BigUint::parse_bytes(s.as_bytes(), 10).unwrap();
-            
-        //     // Convert BigUint to Fr
-        //     let fr_value = Fr::from(biguint);  // Assuming Fr implements From<BigUint>
-        //     fr_value
-        // })
-        // .collect();
+fn main() -> Result<(), Error> {
     // set the initial state
-    // let num= "21888242871839275222246405745257275088548364400416034343698171682845280436225";
-    // let num_2 = "21888242871839275222246405745257275088548364400416034343698271";
-    // let z_0 = vec![a_prev_fr];
+    // let z_0 = vec![Fr::from(3_u32)];
 
-    // set the external inputs to be used at each step of the IVC, it has length of 10 since this
-    // is the number of steps that we will do
-    let mut external_inputs: Vec<Vec<Fr>> = Vec::new();
-    external_inputs.push(external_inputs_fr.clone());
-    // external_inputs.push(external_inputs_fr.clone()); 
-
-    // initialize the Circom circuit
-    // let r1cs_path = PathBuf::from("./circuits/out/with_external_inputs.r1cs");
-    // let wasm_path = PathBuf::from(
-    //     "./circuits/out/with_external_inputs_js/with_external_inputs.wasm",
-    // );
+    // // set the external inputs to be used at each step of the IVC, it has length of 10 since this
+    // // is the number of steps that we will do
+    // let external_inputs = vec![
+    //     vec![Fr::from(6u32), Fr::from(7u32)],
+    //     vec![Fr::from(8u32), Fr::from(9u32)],
+    //     vec![Fr::from(10u32), Fr::from(11u32)],
+    //     vec![Fr::from(12u32), Fr::from(13u32)],
+    //     vec![Fr::from(14u32), Fr::from(15u32)],
+    //     vec![Fr::from(6u32), Fr::from(7u32)],
+    //     vec![Fr::from(8u32), Fr::from(9u32)],
+    //     vec![Fr::from(10u32), Fr::from(11u32)],
+    //     vec![Fr::from(12u32), Fr::from(13u32)],
+    //     vec![Fr::from(14u32), Fr::from(15u32)],
+    // ];
     let z_0 = vec![Fr::from(2_u32), Fr::from(3_u32)];
     let external_inputs = vec![
         vec![Fr::from(4u32), Fr::from(5u32), Fr::from(6u32), Fr::from(7u32), Fr::from(0u32), Fr::from(0u32), Fr::from(26u32), Fr::from(31u32), Fr::from(0u32), Fr::from(0u32),Fr::from(26u32), Fr::from(31u32)],
         vec![Fr::from(1u32), Fr::from(2u32), Fr::from(3u32), Fr::from(4u32), Fr::from(0u32), Fr::from(0u32), Fr::from(119u32), Fr::from(176u32), Fr::from(0u32), Fr::from(0u32),Fr::from(119u32), Fr::from(176u32)]
     ];
+    // initialize the Circom circuit
     let r1cs_path = PathBuf::from("./circuits/out/backbone_layer_dnn.r1cs");
     let wasm_path = PathBuf::from(
         "./circuits/out/backbone_layer_dnn_js/backbone_layer_dnn.wasm",
     );
-
-    let f_circuit_params = (r1cs_path.into(), wasm_path.into(), 2, 12);
-    let f_circuit = CircomFCircuit::<Fr>::new(f_circuit_params).unwrap();
+    let f_circuit_params = (r1cs_path.into(), wasm_path.into(), 2); // state len = 1
+    const EXT_INP_LEN: usize = 12; // external inputs len = 2
+    let f_circuit = CircomFCircuit::<Fr, EXT_INP_LEN>::new(f_circuit_params)?;
 
     pub type N =
-        Nova<G1, GVar, G2, GVar2, CircomFCircuit<Fr>, KZG<'static, Bn254>, Pedersen<G2>, false>;
+        Nova<G1, G2, CircomFCircuit<Fr, EXT_INP_LEN>, KZG<'static, Bn254>, Pedersen<G2>, false>;
     pub type D = DeciderEth<
         G1,
-        GVar,
         G2,
-        GVar2,
-        CircomFCircuit<Fr>,
+        CircomFCircuit<Fr, EXT_INP_LEN>,
         KZG<'static, Bn254>,
         Pedersen<G2>,
         Groth16<Bn254>,
@@ -118,24 +83,23 @@ fn main() {
     >;
 
     let poseidon_config = poseidon_canonical_config::<Fr>();
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = ark_std::rand::rngs::OsRng;
 
     // prepare the Nova prover & verifier params
     let nova_preprocess_params = PreprocessorParam::new(poseidon_config, f_circuit.clone());
-    let nova_params = N::preprocess(&mut rng, &nova_preprocess_params).unwrap();
-
-    // initialize the folding scheme engine, in our case we use Nova
-    let mut nova = N::init(&nova_params, f_circuit.clone(), z_0).unwrap();
+    let nova_params = N::preprocess(&mut rng, &nova_preprocess_params)?;
 
     // prepare the Decider prover & verifier params
     let (decider_pp, decider_vp) =
-        D::preprocess(&mut rng, nova_params.clone(), nova.clone()).unwrap();
+        D::preprocess(&mut rng, (nova_params.clone(), f_circuit.state_len()))?;
+
+    // initialize the folding scheme engine, in our case we use Nova
+    let mut nova = N::init(&nova_params, f_circuit.clone(), z_0)?;
 
     // run n steps of the folding iteration
     for (i, external_inputs_at_step) in external_inputs.iter().enumerate() {
         let start = Instant::now();
-        nova.prove_step(rng, external_inputs_at_step.clone(), None)
-            .unwrap();
+        nova.prove_step(rng, VecF(external_inputs_at_step.clone()), None)?;
         println!("Nova::prove_step {}: {:?}", i, start.elapsed());
     }
 
@@ -144,63 +108,60 @@ fn main() {
     N::verify(
         nova_params.1, // Nova's verifier params
         ivc_proof,
-    )
-   .unwrap();
+    )?;
 
-    // let start = Instant::now();
-    // let proof = D::prove(rng, decider_pp, nova.clone()).unwrap();
-    // println!("generated Decider proof: {:?}", start.elapsed());
+    let start = Instant::now();
+    let proof = D::prove(rng, decider_pp, nova.clone())?;
+    println!("generated Decider proof: {:?}", start.elapsed());
 
-    // let verified = D::verify(
-    //     decider_vp.clone(),
-    //     nova.i,
-    //     nova.z_0.clone(),
-    //     nova.z_i.clone(),
-    //     &nova.U_i.get_commitments(),
-    //     &nova.u_i.get_commitments(),
-    //     &proof,
-    // )
-    // .unwrap();
-    // assert!(verified);
-    // println!("Decider proof verification: {}", verified);
+    let verified = D::verify(
+        decider_vp.clone(),
+        nova.i,
+        nova.z_0.clone(),
+        nova.z_i.clone(),
+        &nova.U_i.get_commitments(),
+        &nova.u_i.get_commitments(),
+        &proof,
+    )?;
+    assert!(verified);
+    println!("Decider proof verification: {}", verified);
 
-    // // Now, let's generate the Solidity code that verifies this Decider final proof
-    // let function_selector =
-    //     get_function_selector_for_nova_cyclefold_verifier(nova.z_0.len() * 2 + 1);
+    // Now, let's generate the Solidity code that verifies this Decider final proof
+    let function_selector =
+        get_function_selector_for_nova_cyclefold_verifier(nova.z_0.len() * 2 + 1);
 
-    // let calldata: Vec<u8> = prepare_calldata(
-    //     function_selector,
-    //     nova.i,
-    //     nova.z_0,
-    //     nova.z_i,
-    //     &nova.U_i,
-    //     &nova.u_i,
-    //     proof,
-    // )
-    // .unwrap();
+    let calldata: Vec<u8> = prepare_calldata(
+        function_selector,
+        nova.i,
+        nova.z_0,
+        nova.z_i,
+        &nova.U_i,
+        &nova.u_i,
+        proof,
+    )?;
 
-    // // prepare the setup params for the solidity verifier
-    // let nova_cyclefold_vk = NovaCycleFoldVerifierKey::from((decider_vp, f_circuit.state_len()));
+    // prepare the setup params for the solidity verifier
+    let nova_cyclefold_vk = NovaCycleFoldVerifierKey::from((decider_vp, f_circuit.state_len()));
 
-    // // generate the solidity code
-    // let decider_solidity_code = get_decider_template_for_cyclefold_decider(nova_cyclefold_vk);
+    // generate the solidity code
+    let decider_solidity_code = get_decider_template_for_cyclefold_decider(nova_cyclefold_vk);
 
-    // // verify the proof against the solidity code in the EVM
-    // let nova_cyclefold_verifier_bytecode = compile_solidity(&decider_solidity_code, "NovaDecider");
-    // let mut evm = Evm::default();
-    // let verifier_address = evm.create(nova_cyclefold_verifier_bytecode);
-    // let (_, output) = evm.call(verifier_address, calldata.clone());
-    // assert_eq!(*output.last().unwrap(), 1);
+    // verify the proof against the solidity code in the EVM
+    let nova_cyclefold_verifier_bytecode = compile_solidity(&decider_solidity_code, "NovaDecider");
+    let mut evm = Evm::default();
+    let verifier_address = evm.create(nova_cyclefold_verifier_bytecode);
+    let (_, output) = evm.call(verifier_address, calldata.clone());
+    assert_eq!(*output.last().unwrap(), 1);
 
     // save smart contract and the calldata
     println!("storing nova-verifier.sol and the calldata into files");
-    // use std::fs;
-    // fs::write(
-    //     "./examples/nova-verifier.sol",
-    //     decider_solidity_code.clone(),
-    // )
-    // .unwrap();
-    // fs::write("./examples/solidity-calldata.calldata", calldata.clone()).unwrap();
-    // let s = solidity_verifiers::utils::get_formatted_calldata(calldata.clone());
-    // fs::write("./examples/solidity-calldata.inputs", s.join(",\n")).expect("");
+    use std::fs;
+    fs::write(
+        "./examples/nova-verifier.sol",
+        decider_solidity_code.clone(),
+    )?;
+    fs::write("./examples/solidity-calldata.calldata", calldata.clone())?;
+    let s = solidity_verifiers::utils::get_formatted_calldata(calldata.clone());
+    fs::write("./examples/solidity-calldata.inputs", s.join(",\n")).expect("");
+    Ok(())
 }
