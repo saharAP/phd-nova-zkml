@@ -65,41 +65,28 @@ fn read_circiut_input(f: &str) -> Network {
 }
 
 fn main() -> Result<(), Error> {
-    // define number of steps to be done in the IVC
-    let n_steps = 2;
+
     // import data from a sample digit image 7 as input
-    const MNIST_INPUT: &str = "../data/circiut_inputs/mnist_input_4.json";
+    const MNIST_INPUT: &str = "../data/circiut_inputs/mnist_input_4_10_dig4.json";
 
     // read the input data for backbone circiut from the file
     let network = read_circiut_input(MNIST_INPUT);
      // set the initial state with the activation function of the head
     let z_0= network.head.activation.clone();
-  
-    let mut external_inputs: Vec<Fr> = Vec::new();
 
-    let mut backnone_0_weight: Vec<Vec<Fr>> = network.backbone[0].weight.clone();
-    let mut backnone_1_weight: Vec<Vec<Fr>> = network.backbone[1].weight.clone();
-    
+    // define number of steps to be done in the IVC
+    let n_steps =  network.backbone.len();
     // all the external inputs for all backbone layers
     let mut external_inputs: Vec<Vec<Fr>> = Vec::new();
-    // Flatten using flat_map and collect into a Vec<Fr>
-    let mut flat_vec: Vec<Fr> = backnone_0_weight.into_iter().flat_map(|v| v.into_iter()).collect();
-    flat_vec.extend( network.backbone[0].bias.clone()); 
-    flat_vec.extend( network.backbone[0].dense_out.clone());
-    flat_vec.extend( network.backbone[0].remainder.clone()); 
-    flat_vec.extend( network.backbone[0].activation.clone());
+    for i in 0..n_steps {
+        let mut flat_vec: Vec<Fr> = network.backbone[i].weight.clone().into_iter().flat_map(|v| v.into_iter()).collect();
+        flat_vec.extend( network.backbone[i].bias.clone()); 
+        flat_vec.extend( network.backbone[i].dense_out.clone());
+        flat_vec.extend( network.backbone[i].remainder.clone()); 
+        flat_vec.extend( network.backbone[i].activation.clone());
+        external_inputs.push(flat_vec);
+    }
 
-    
-    // second backbone layer
-    let mut flat_vec_1: Vec<Fr> = backnone_1_weight.into_iter().flat_map(|v| v.into_iter()).collect();
-    flat_vec_1.extend( network.backbone[1].bias.clone()); 
-    flat_vec_1.extend( network.backbone[1].dense_out.clone());
-    flat_vec_1.extend( network.backbone[1].remainder.clone()); 
-    flat_vec_1.extend( network.backbone[1].activation.clone());
-
-    // add the external inputs to the list
-    external_inputs.push(flat_vec);
-    external_inputs.push(flat_vec_1);
     println!("Number of steps: {:?}", external_inputs.len());
     // initialize the Circom circuit
     let r1cs_path = PathBuf::from("./circuits/out/backbone_layer_dnn.r1cs");
