@@ -75,9 +75,10 @@ fn read_circiut_input(f: &str) -> Network {
 // #[global_allocator]
 // static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 fn main() -> Result<(), Error> {
-
+    const STATE_LEN: usize = 56; // length of IVC input vector
+    const EXT_INP_LEN: usize = STATE_LEN * STATE_LEN + 4 * STATE_LEN; // length of external inputs
     // import data from a sample digit image 7 as input
-    const MNIST_INPUT: &str = "../data/circiut_inputs/mnist_input_20_10_dig4.json";
+    const MNIST_INPUT: &str = "../data/circiut_inputs/mnist_input_10_56_dig4.json";
 
     // read the input data for backbone circiut from the file
     let network = read_circiut_input(MNIST_INPUT);
@@ -104,8 +105,8 @@ fn main() -> Result<(), Error> {
         "./circuits/out/backbone_layer_dnn_js/backbone_layer_dnn.wasm",
     );
    // 10= size of the input, external input size :140= 10 * 10 + 4 * 10
-    let f_circuit_params = (r1cs_path.into(), wasm_path.into(), 10); // state len = 10
-    const EXT_INP_LEN: usize = 140; // external inputs len = 140
+    let f_circuit_params = (r1cs_path.into(), wasm_path.into(), STATE_LEN); // state len = 10
+    // const EXT_INP_LEN: usize = 140; // external inputs len = 140
     let f_circuit = CircomFCircuit::<Fr, EXT_INP_LEN>::new(f_circuit_params)?;
 
     pub type N =
@@ -223,14 +224,18 @@ fn main() -> Result<(), Error> {
 
     // save smart contract and the calldata
     println!("storing nova-verifier.sol and the calldata into files");
+    let nova_verifier_sol= format!("./src/solidity/nova-verifier-dnn-{}-{}.sol", n_steps, STATE_LEN);
+    let solidity_calldata_calldata = format!("./src/solidity/solidity-calldata-dnn-{}-{}.calldata", n_steps, STATE_LEN);
+    let solidity_calldata_inputs = format!("./src/solidity/solidity-calldata-dnn-{}-{}.inputs", n_steps, STATE_LEN);
+
     use std::fs;
     fs::write(
-        "./src/solidity/nova-verifier.sol",
+        nova_verifier_sol,
         decider_solidity_code.clone(),
     )?;
-    fs::write("./src/solidity/solidity-calldata.calldata", calldata.clone())?;
+    fs::write(solidity_calldata_calldata, calldata.clone())?;
     let s = solidity_verifiers::utils::get_formatted_calldata(calldata.clone());
-    fs::write("./src/solidity/solidity-calldata.inputs", s.join(",\n")).expect("");
+    fs::write(solidity_calldata_inputs, s.join(",\n")).expect("");
 
     Ok(())    
 }

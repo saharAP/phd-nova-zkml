@@ -2,4 +2,4 @@
 pragma circom 2.0.0;
 include "./Backbone_dense.circom";
 
-component main { public [ivc_input] } = BackboneDense(10,10,18);
+component main { public [ivc_input] } = BackboneDense(56,56,18);
