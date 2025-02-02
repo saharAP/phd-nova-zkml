@@ -9,8 +9,16 @@
 /// - generate the Solidity contract that verifies the proof
 /// - verify the proof in the EVM
 ///
+use std::any::type_name;
+
 mod network; // Import the `network` module
 use network::Network;
+
+
+#[macro_use]
+mod memory_utils;
+
+// use jemalloc_ctl::{epoch, stats};
 
 use serde_json::{json, Value};
 use serde::{Deserialize, Serialize, Deserializer};
@@ -64,10 +72,12 @@ fn read_circiut_input(f: &str) -> Network {
        serde_json::from_str(&file_content).unwrap()
 }
 
+// #[global_allocator]
+// static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 fn main() -> Result<(), Error> {
 
     // import data from a sample digit image 7 as input
-    const MNIST_INPUT: &str = "../data/circiut_inputs/mnist_input_4_10_dig4.json";
+    const MNIST_INPUT: &str = "../data/circiut_inputs/mnist_input_20_10_dig4.json";
 
     // read the input data for backbone circiut from the file
     let network = read_circiut_input(MNIST_INPUT);
@@ -137,12 +147,39 @@ fn main() -> Result<(), Error> {
         nova_params.1, // Nova's verifier params
         ivc_proof,
     )?;
+ 
+//     let peak_beforefree = stats::resident::read().unwrap();
+//     println!("🚀 Peak Memory Usage before free: {:.3} MB",
+//     (peak_beforefree) as f64 / (1024.0 * 1024.0));
+//    // ============================
+//     // 🛑 Free Memory Before Proof Generation
+//     // ============================
+    // epoch::mib().unwrap().advance().unwrap();
 
+    // let peak_before = stats::resident::read().unwrap();
+    // println!("🚀 Peak Memory Usage before: {:.3} MB",
+    // (peak_before) as f64 / (1024.0 * 1024.0));
+//    let mut proof = new D::Proof();
     let mut start = Instant::now();
-    let proof = D::prove(rng, decider_pp, nova.clone())?;
-    println!("generated Decider proof: {:?}", start.elapsed());
+    let result = measure_memory!(|| {
+    let proof = D::prove(rng, decider_pp, nova.clone()).unwrap();
+    proof
+    });
+    let proof = result();
+    println!("✅ generated Decider proof: {:?}", start.elapsed());
+  
+     // ============================
+    // 🛑 Refresh Stats & Get Peak Memory Usage
+    // ============================
+    // epoch::mib().unwrap().advance().unwrap();
 
-    // verify the Decider proof
+    // let peak_after = stats::resident::read().unwrap();
+    // println!("🚀 Peak Memory Usage after: {:.3} MB",
+    // (peak_after) as f64 / (1024.0 * 1024.0));
+
+    // println!("🚀 Peak Memory Usage for Decider Proof Generation: {:.3} MB",
+    //     (peak_after - peak_before) as f64 / (1024.0 * 1024.0));
+    //verify the Decider proof
     start = Instant::now();
     let verified = D::verify(
         decider_vp.clone(),
@@ -154,8 +191,8 @@ fn main() -> Result<(), Error> {
         &proof,
     )?;
     assert!(verified);
-    println!("Decider proof verification: {}", verified);
-    println!("Decider proof verification time: {:?}", start.elapsed());
+    println!("✅ Decider proof verification: {}", verified);
+    println!("✅ Decider proof verification time: {:?}", start.elapsed());
 
     // Now, let's generate the Solidity code that verifies this Decider final proof
     let function_selector =
