@@ -9,14 +9,6 @@ template BackboneDense(nInputs, nOutputs,n) {
     signal input external_inputs[nInputs * nOutputs+ nOutputs+ nOutputs+ nOutputs+ nOutputs];
 
     signal output ivc_output[nOutputs]; // IVC output
-// external inputs
-    
-    // signal input dense_1_weights[nInputs][nOutputs];
-    // signal input dense_1_bias[nOutputs];
-    // signal input dense_1_out[nOutputs];
-    // signal input dense_1_remainder[nOutputs];
-    // signal input relu_out[nOutputs];
-    // convert external inputs to the circit inputs
 
     // decoding external inputs to the circuit inputs
     signal dense_weights[nInputs][nOutputs];
