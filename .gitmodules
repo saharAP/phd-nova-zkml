@@ -1,0 +1,3 @@
+[submodule "sonobe_scheme/src/solidity/lib/forge-std"]
+	path = sonobe_scheme/src/solidity/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
